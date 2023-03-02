@@ -3,9 +3,11 @@ import os
 absolute = os.path.abspath(os.getcwd())
 absolute = absolute + '/'
 
-data = {'af': '/mnt/projects/repeatsdb/prediction/rdbl_2/srul_20220829/af_4/results',
-        'binary': absolute + 'data/af_4/binary',
-        'dataset': '/mnt/db/af'
+data = {'prediction': '/mnt/projects/repeatsdb/prediction/rdbl_2/srul_20220829/af_4/results',
+        'dataset': '/mnt/db/af/',
+        'binary': absolute + 'data/af_4/binary/',
+        'dataset_table': absolute + 'data/af_4/dataset_table/',
+        'data': absolute + 'data/'
 }
 
 # Define Mongo configuration
