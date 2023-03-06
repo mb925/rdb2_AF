@@ -1,15 +1,18 @@
+#!/usr/bin/env python3
+
 import config as cfg
 import pandas as pd
-import os
+import os, sys
 import json
 from Bio.PDB import *
 import gzip
 from statistics import mean
 import fnmatch
 import argparse
+import logging
+
 
 def parse_predicted2_to_dict(f):
-    print('predicted dict')
     dict_predicted = {}
     data = pd.read_csv(f, sep=',')
 
@@ -26,16 +29,23 @@ def parse_predicted2_to_dict(f):
             dict_predicted[i[1][0]].extend(units)
     return dict_predicted
 
+
 def dict_to_binary(d_pred2, filename):
     df = pd.DataFrame()
-
+    processed = 0
+    totals = len(d_pred2)
+    chrstot = len(str(totals))
     for uniprot in d_pred2:
-
         df_residues = pd.DataFrame()
         uniprot_id = uniprot[:-1]
+        processed += 1
+        progress = processed / totals * 100
+        if processed % 100 == 0:
+            logging.debug(f'  {processed: {chrstot}}/{totals} [{progress:5.1f}%] {uniprot_id} ...')
+
         parser = MMCIFParser()
-        f = cfg.data['dataset'] + filename.split('.')[0] + '/AF-' + uniprot_id + '-F1-model_v4.cif.gz'
-        structure = parser.get_structure(uniprot, gzip.open(f,"rt"))
+        f = args.in_dataset + '/AF-' + uniprot_id + '-F1-model_v4.cif.gz'
+        structure = parser.get_structure(uniprot, gzip.open(f, "rt"))
 
         # Using CA-CA
         ppb = CaPPBuilder()
@@ -44,20 +54,22 @@ def dict_to_binary(d_pred2, filename):
             seq = pp.get_sequence()
 
         df_residues['uniprot_sequence'] = seq
-        df_residues['residue_id'] = range(1, 1+len(df_residues))
+        df_residues['residue_id'] = range(1, 1 + len(df_residues))
         df_residues['RDB2'] = 0
         df_residues['REGION'] = 0
         df_residues['uniprot_id'] = uniprot
-
 
         for interval2 in d_pred2[uniprot]:
             fill_repeated_interval(uniprot, df_residues, interval2)
 
         df = pd.concat([df, df_residues])
-        print(filename)
-        print(uniprot_id)
 
-    df.to_csv(cfg.data['binary'] + filename, index=False)
+    logging.debug(f'  {processed: {chrstot}}/{totals} [{progress:5.1f}%] {uniprot_id} ...')
+
+    if not os.path.isdir(args.out + 'binary'):
+        os.makedirs(args.out + 'binary')
+    df.to_csv(args.out + 'binary/' + filename, index=False)
+
 
 def fill_repeated_interval(uniprot, residues, interval):
     start_seqres = residues.loc[residues['residue_id'] == interval[0]]
@@ -69,7 +81,8 @@ def fill_repeated_interval(uniprot, residues, interval):
 
             # scrive la regione in una colonna
             residues.loc[(residues['residue_id'] >= start_seqres) &
-                         (residues['residue_id'] <= end_seqres), 'REGION'] = uniprot + '_' + str(interval[0]) + '_' + str(
+                         (residues['residue_id'] <= end_seqres), 'REGION'] = uniprot + '_' + str(
+                interval[0]) + '_' + str(
                 interval[1])
             # mette 1 in una colonna quando ripetuto
             residues.loc[(residues['residue_id'] >= start_seqres) &
@@ -82,8 +95,8 @@ def fill_repeated_interval(uniprot, residues, interval):
                          (residues['residue_id'] <= end_seqres), 'TOPOLOGY'] = interval[3]
     return residues
 
-def find_seq(db, uniprot_id):
 
+def find_seq(db, uniprot_id):
     print('Current uniprot is %s' % str(uniprot_id))
     l = list(db.uniprot_20220823.find({'uniprot_id': uniprot_id}))
     return l
@@ -101,31 +114,30 @@ def count_delta(x):
     return uniprot_average
 
 
-def get_data_table(f_binary,f_dataset):
-    data_binary = pd.read_csv(f_binary, sep=',')
-    uniprot_count_total = len(fnmatch.filter(os.listdir(f_dataset), '*.*'))
+def get_data_table(filename):
+    data_binary = pd.read_csv(args.out + 'binary/' + filename + '.csv.gz', sep=',')
+    uniprot_count_total = len(fnmatch.filter(os.listdir(args.out + 'dataset_table'), '*.*'))
 
     uniprot_count_repeated = len(data_binary['uniprot_id'].drop_duplicates())
     regions = data_binary.loc[data_binary['REGION'] != '0']
     df_uniprots = regions.groupby(['uniprot_id']).apply(lambda x: count_delta(x)).reset_index()
     df_uniprots.rename({0: 'delta'}, axis='columns', inplace=True)
     organism_average = df_uniprots['delta'].mean()
-    df = pd.DataFrame(columns=['uniprot_count_repeated', 'uniprot_count_total','organism_average'])
+    df = pd.DataFrame(columns=['uniprot_count_repeated', 'uniprot_count_total', 'organism_average'])
     df.loc[0] = [str(uniprot_count_repeated), uniprot_count_total, round(organism_average, 2)]
-
-    df.to_csv(cfg.data['dataset_table'] + filename.split('.')[0] + '.csv', index=False)
-
+    if not os.path.isdir(args.out + 'dataset_table'):
+        os.makedirs(args.out + 'dataset_table')
+    df.to_csv(args.out + 'dataset_table/' + filename + '.csv', index=False)
 
 
 if __name__ == '__main__':
-
-
-
     # Define argument parser
     parser = argparse.ArgumentParser(description='Generate alignments between units in the same PDB structure')
     parser.add_argument('--in_prediction', '-i', type=str, help='Path to input predictions')
     parser.add_argument('--in_dataset', '-db', type=str, help='Path to input AF dataset')
     parser.add_argument('--out', '-o', type=str, help='Path to output')
+    parser.add_argument("-ll", "--log-level", type=str, choices=["debug", "info"], default="info",
+                        help="set log level for logging")
 
     # args.in_prediction
     # /mnt/projects/repeatsdb/prediction/rdbl_2/srul_20220829/af_4/results/UP000000429_85962_HELPY_v4.csv.gz
@@ -136,20 +148,23 @@ if __name__ == '__main__':
     # /mnt/db/af/UP000000579_71421_HAEIN_v4
 
     # args.out
-    # absolute + 'data/af_4/binary/
+    # /home/martina/PycharmProjects/rdb2_AF/data/af_4/
 
     # Parse arguments
     args = parser.parse_args()
-    print(args.in_dataset)
 
+    # Initialize logger
+    logging.basicConfig(format='%(asctime)s %(levelname)-5.5s %(message)s',
+                        level=logging.getLevelName(args.log_level.upper()), stream=sys.stdout)
+    logging.info(f'{os.path.basename(__file__)} started')
+    logging.debug(f'Arguments: {vars(args)}')
 
-
+    filename = os.path.basename(args.in_dataset)
     f = os.path.join(args.in_prediction)
+
     dict_predicted2 = parse_predicted2_to_dict(f)
-    dict_to_binary(dict_predicted2, args.in_prediction) # get only file name from args.in_prediction
+    dict_to_binary(dict_predicted2, filename)  # get only file name from args.in_prediction
+    get_data_table(filename)
 
-
-    f_binary = os.path.join(args.out)
-    f_dataset = os.path.join(args.in_dataset)
-    get_data_table(f_binary, f_dataset)
-
+    logging.info(f'{os.path.basename(__file__)} finished with 0')
+    sys.exit(0)
