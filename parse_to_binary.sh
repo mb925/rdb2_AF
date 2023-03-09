@@ -8,7 +8,7 @@
 # Load modules
 module load python3/3.8.5
 
-db_path=$1
+pred_path=$1
 # Define path to output directory
 out_dir=$2
 # Define path to list
@@ -16,6 +16,11 @@ in_lists=$3
 # Define path to input list
 curr_file=$(sed "${SGE_TASK_ID}q;d" "$3")
 # Define debug level
-debug_lvl=info
+debug_lvl=debug
 
-python3 ./bin/parse_to_binary.py -i "${curr_file}" -db "${db_path}" -o "${out_dir}" "${debug_lvl}"
+echo "Executing parse_to_binary.py -i ${pred_path} -db ${curr_file} -o ${out_dir} ${debug_lvl} ..."
+python3 ./parse_to_binary.py -i "${pred_path}" -db "${curr_file}" -o "${out_dir}" -ll "${debug_lvl}"
+ex=$?
+echo "Done with parse_to_binary.py, exited with $ex"
+exit $ex
+

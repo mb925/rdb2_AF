@@ -2,16 +2,38 @@
 
 import os
 import sys
+import pandas as pd
 
 
 def create_list(listfile, dbdir):
-    with open(listfile, 'w') as the_file:
-        for organism in os.listdir(dbdir):
-            if organism == 'mane_overlap_v4' or organism == 'swissprot_cif_v4' or organism == 'download_metadata.json':
-                continue
+    df = pd.DataFrame()
+    paths = []
+    files = []
+    organisms = []
+    for organism in os.listdir('/mnt' + dbdir):
+        print(organism)
 
-            the_file.write(
-                '/projects/repeatsdb/prediction/rdbl_2/srul_20220829/af_4/results/' + organism + '.csv.gz' '\n')
+        if organism == 'download_metadata.json':
+            continue
+        for file in os.listdir('/mnt' + dbdir + '/' + organism):
+            if file.endswith('.gz'):
+                paths.append(dbdir + '/' + organism + '/' + file)
+                files.append(file)
+                organisms.append(organism)
+
+    df['paths'] = paths
+    df['files'] = files
+    df['organism'] = organisms
+    df.to_csv('data/mapping.csv', index=False)
+
+
+    df = df.drop_duplicates(subset=['files'])
+
+    with open(listfile, 'w') as the_file:
+       for row in df.iterrows():
+           the_file.write(row[1]['paths'] + '\n')
+
+
 
 
 if __name__ == '__main__':
