@@ -55,7 +55,6 @@ def dict_to_binary(d_pred2, d_reg, filename, uniprot_file):
     # totals = len(d_pred2)
     # chrstot = len(str(totals))
 
-    df_residues = pd.DataFrame()
     uniprot_id = uniprot_file.split('-')[1]
     # processed += 1
     # progress = processed / totals * 100
@@ -74,14 +73,18 @@ def dict_to_binary(d_pred2, d_reg, filename, uniprot_file):
     for pp in ppb.build_peptides(structure):
         seq = pp.get_sequence()
 
-    logging.debug(f'Sequence: {seq} ')
+    logging.debug(f'sequence: {seq} ')
+    df_residues = pd.DataFrame({'uniprot_sequence': [*seq]})
 
-    df_residues['uniprot_sequence'] = pd.Series(seq)
+    logging.debug(f'-----------------------------')
+
     df_residues['residue_id'] = range(1, 1 + len(df_residues))
     df_residues['RDB2'] = 0
     df_residues['REGION'] = '0'
     df_residues['UNIT'] = '0'
     df_residues['uniprot_id'] = uniprot_id
+
+    logging.debug(f'Df: {df_residues} ')
 
     if uniprot_id in d_pred2:
         for interval2 in d_pred2[uniprot_id]:
@@ -93,12 +96,12 @@ def dict_to_binary(d_pred2, d_reg, filename, uniprot_file):
 
     # logging.debug(f'  {processed: {chrstot}}/{totals} [{progress:5.1f}%] {uniprot_id} ...')
 
-    logging.debug(f'making dir {args.out} binary/ {filename}...')
+    logging.debug(f'making dir {args.out} {filename}...')
 
-    os.makedirs(args.out + 'binary/' + filename, exist_ok=True)
+    os.makedirs(args.out + filename, exist_ok=True)
     logging.debug(f'writing to {args.out} binary/ {filename}...')
 
-    df_residues.to_csv(args.out + 'binary/' + filename + '/' + uniprot_file + '.csv.gz', index=False)
+    df_residues.to_csv(args.out + filename + '/' + uniprot_file + '.csv.gz', index=False)
 
 
 def fill_repeated_interval(uniprot, residues, interval, type):
