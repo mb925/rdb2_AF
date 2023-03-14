@@ -99,7 +99,7 @@ def dict_to_binary(d_pred2, d_reg, filename, uniprot_file):
     logging.debug(f'making dir {args.out} {filename}...')
 
     os.makedirs(args.out + filename, exist_ok=True)
-    logging.debug(f'writing to {args.out} binary/ {filename}...')
+    logging.debug(f'writing to {args.out} {filename}...')
 
     df_residues.to_csv(args.out + filename + '/' + uniprot_file + '.csv.gz', index=False)
 
@@ -150,6 +150,7 @@ def count_delta(x, type):
     x = x.loc[x[type] != '0'].drop_duplicates(subset=[type])
 
     if not x.empty:
+        average = []
         for region in x.iterrows():
             end = int(region[1][type].split('_')[2])
             st = int(region[1][type].split('_')[1])
@@ -159,7 +160,7 @@ def count_delta(x, type):
     return average
 
 def get_data_table(filename, uniprot_file):
-    data_binary = pd.read_csv(args.out + 'binary/' + filename + '/' + uniprot_file + '.csv.gz', sep=',', dtype={'UNIT': str, 'REGION': str})
+    data_binary = pd.read_csv(args.out + filename + '/' + uniprot_file + '.csv.gz', sep=',', dtype={'UNIT': str, 'REGION': str})
 
 
     trp = 0
@@ -176,7 +177,7 @@ def get_data_table(filename, uniprot_file):
     df = pd.DataFrame(columns=['trp', 'trp_residues','protein_len', 'units', 'unit_avg_len', 'region_avg_len'])
     df.loc[0] = [trp, str(trp_res), str(prt_len), str(units), round(avg_unit, 2), round(avg_reg, 2)]
 
-    df.to_csv(args.out + 'binary/' + filename + '/table_' + uniprot_file + '.csv', index=False)
+    df.to_csv(args.out + filename + '/table_' + uniprot_file + '.csv', index=False)
 
 
 if __name__ == '__main__':
