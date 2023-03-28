@@ -24,7 +24,7 @@ def parse_predicted2_to_dict(dir, organism, uniprot_file):
         for line in f:
             uniprot_id = str(line).split(',')[0][2:]
             if uniprot_file == uniprot_id:
-                print(str(line).split(',')[1])
+                # print(str(line).split(',')[1])
                 if str(line).split(',')[1] == 'no regions':
                     continue
 
@@ -83,7 +83,7 @@ def dict_to_binary(d_pred2, d_reg, filename, uniprot_file):
     df_residues['UNIT'] = '0'
     df_residues['uniprot_id'] = uniprot_id
 
-    logging.debug(f'Df: {df_residues} ')
+    # logging.debug(f'Df: {df_residues} ')
 
     if uniprot_id in d_pred2:
         for interval2 in d_pred2[uniprot_id]:
@@ -175,7 +175,7 @@ def get_data_table(filename, uniprot_file):
     # organism_average = df_uniprots['delta'].mean()
     df = pd.DataFrame(columns=['trp', 'trp_residues','protein_len', 'units', 'unit_avg_len', 'region_avg_len'])
     df.loc[0] = [trp, str(trp_res), str(prt_len), str(units), round(avg_unit, 2), round(avg_reg, 2)]
-    print()
+
     df.to_csv(args.out + filename + '/table_' + uniprot_file + '.csv', index=False)
 
 
@@ -216,11 +216,13 @@ if __name__ == '__main__':
     uniprot = filename.split('AF-')[1]
     uniprot = uniprot.split('-F1')[0] + 'A'
 
-    # dict_regions = parse_regions_to_dict(args.in_prediction, organism, uniprot)
+    logging.info(f'Working with {uniprot} [{organism}]')
+    logging.debug('Processing dict ...')
     dict_predicted2 = parse_predicted2_to_dict(args.in_prediction, organism, uniprot)
-    # dict_to_binary(dict_predicted2, dict_regions, organism, filename)  # get only file name from args.in_prediction
-    # get_data_table(organism, filename)
+    logging.debug(f'Processing residues ...')
+    dict_to_binary(dict_predicted2[0], dict_predicted2[1], organism, filename)  # get only file name from args.in_prediction
+    logging.debug(f'Calculating stats ...')
+    get_data_table(organism, filename)
 
-
-    logging.info(f'{os.path.basename(__file__)} finished with 0')
+    logging.info(f'{os.path.basename(__file__)} on {uniprot} [{organism}] finished with 0')
     sys.exit(0)
