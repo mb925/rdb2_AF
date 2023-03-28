@@ -13,43 +13,40 @@ from statistics import mean
 import fnmatch
 
 
-def parse_predicted2_to_dict(dir, organism):
+def parse_predicted2_to_dict(dir, organism, uniprot_file):
     dict_predicted = {}
-    data = pd.read_csv(dir + organism + '.csv.gz', sep=',')
-
-    for i in data.iterrows():
-        uniprot_id = i[1][0][:-1]
-        if i[1][2] == 'no regions':
-            continue
-        units = json.loads(i[1][2])
-        for unit in units:
-            unit.extend([i[1][5], i[1][6]])
-        if uniprot_id in dict_predicted:
-            dict_predicted[uniprot_id].extend(units)
-        if uniprot_id not in dict_predicted:
-            dict_predicted[uniprot_id] = []
-            dict_predicted[uniprot_id].extend(units)
-    return dict_predicted
-
-def parse_regions_to_dict(dir, organism, uniprot_file):
     dict_regions = {}
+
     logging.debug('start uniprot dict')
 
-    data = pd.read_csv(dir + organism + '.csv.gz', sep=',')
-    data = data.loc[data['PDB'] == uniprot_file]
-    for i in data.iterrows():
-        uniprot_id = i[1][0][:-1]
-        if i[1][1] == 'no regions':
-            continue
-        regions = [int(i[1][1].split('-')[0]), int(i[1][1].split('-')[1])]
-        if uniprot_id in dict_regions:
-            dict_regions[uniprot_id].append(regions)
-        if uniprot_id not in dict_regions:
-            dict_regions[uniprot_id] = []
-            dict_regions[uniprot_id].append(regions)
+
+    with gzip.open(dir + organism + '.csv.gz') as f:
+        for line in f:
+            uniprot_id = str(line).split(',')[0][2:]
+            if uniprot_file == uniprot_id:
+                print(str(line).split(',')[1])
+                if str(line).split(',')[1] == 'no regions':
+                    continue
+
+                # units
+                units = json.loads(str(line).split('"')[1])
+                if uniprot_id in dict_predicted:
+                    dict_predicted[uniprot_id].extend(units)
+                if uniprot_id not in dict_predicted:
+                    dict_predicted[uniprot_id] = []
+                    dict_predicted[uniprot_id].extend(units)
+
+                # regions
+                rg = str(line).split(',')[1]
+                regions = [int(rg.split('-')[0]), int(rg.split('-')[1])]
+                if uniprot_id in dict_regions:
+                    dict_regions[uniprot_id].append(regions)
+                if uniprot_id not in dict_regions:
+                    dict_regions[uniprot_id] = []
+                    dict_regions[uniprot_id].append(regions)
 
     logging.debug('end uniprot dict')
-    return dict_regions
+    return [dict_predicted, dict_regions]
 def dict_to_binary(d_pred2, d_reg, filename, uniprot_file):
     logging.debug(f'dict_to_binary: {filename} ')
 
@@ -195,7 +192,7 @@ if __name__ == '__main__':
     # /mnt/projects/repeatsdb/prediction/rdbl_2/srul_20220829/af_4/results/
 
     # args.in_dataset
-    # /mnt/db/af/UP000002716_300267_SHIDS_v4/AF-Q32DQ8-F1-model_v4.cif.gz
+    # /mnt/db/af/UP000002716_300267_SHIDS_v4/AF-Q32DX3-F1-model_v4.cif.gz
 
 
     # args.out
@@ -219,10 +216,10 @@ if __name__ == '__main__':
     uniprot = filename.split('AF-')[1]
     uniprot = uniprot.split('-F1')[0] + 'A'
 
-    dict_regions = parse_regions_to_dict(args.in_prediction, organism, uniprot)
-    dict_predicted2 = parse_predicted2_to_dict(args.in_prediction, organism)
-    dict_to_binary(dict_predicted2, dict_regions, organism, filename)  # get only file name from args.in_prediction
-    get_data_table(organism, filename)
+    # dict_regions = parse_regions_to_dict(args.in_prediction, organism, uniprot)
+    dict_predicted2 = parse_predicted2_to_dict(args.in_prediction, organism, uniprot)
+    # dict_to_binary(dict_predicted2, dict_regions, organism, filename)  # get only file name from args.in_prediction
+    # get_data_table(organism, filename)
 
 
     logging.info(f'{os.path.basename(__file__)} finished with 0')
