@@ -31,11 +31,12 @@ def parse_predicted2_to_dict(dir, organism):
             dict_predicted[uniprot_id].extend(units)
     return dict_predicted
 
-def parse_regions_to_dict(dir, organism):
+def parse_regions_to_dict(dir, organism, uniprot_file):
     dict_regions = {}
+    logging.debug('start uniprot dict')
 
     data = pd.read_csv(dir + organism + '.csv.gz', sep=',')
-
+    data = data.loc[data['PDB'] == uniprot_file]
     for i in data.iterrows():
         uniprot_id = i[1][0][:-1]
         if i[1][1] == 'no regions':
@@ -47,6 +48,7 @@ def parse_regions_to_dict(dir, organism):
             dict_regions[uniprot_id] = []
             dict_regions[uniprot_id].append(regions)
 
+    logging.debug('end uniprot dict')
     return dict_regions
 def dict_to_binary(d_pred2, d_reg, filename, uniprot_file):
     logging.debug(f'dict_to_binary: {filename} ')
@@ -176,7 +178,7 @@ def get_data_table(filename, uniprot_file):
     # organism_average = df_uniprots['delta'].mean()
     df = pd.DataFrame(columns=['trp', 'trp_residues','protein_len', 'units', 'unit_avg_len', 'region_avg_len'])
     df.loc[0] = [trp, str(trp_res), str(prt_len), str(units), round(avg_unit, 2), round(avg_reg, 2)]
-
+    print()
     df.to_csv(args.out + filename + '/table_' + uniprot_file + '.csv', index=False)
 
 
@@ -214,8 +216,10 @@ if __name__ == '__main__':
     del organism[-1]
 
     organism = organism[-1]
+    uniprot = filename.split('AF-')[1]
+    uniprot = uniprot.split('-F1')[0] + 'A'
 
-    dict_regions = parse_regions_to_dict(args.in_prediction, organism)
+    dict_regions = parse_regions_to_dict(args.in_prediction, organism, uniprot)
     dict_predicted2 = parse_predicted2_to_dict(args.in_prediction, organism)
     dict_to_binary(dict_predicted2, dict_regions, organism, filename)  # get only file name from args.in_prediction
     get_data_table(organism, filename)
