@@ -109,13 +109,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
     total_trp_res = 0
     total_res = 0
-    # organisms = ['UP000000579_71421_HAEIN_v4', 'UP000002716_300267_SHIDS_v4', 'UP000020681_1299332_MYCUL_v4',
-    #              'UP000008827_3847_SOYBN_v4', 'UP000094526_86049_9EURO1_v4','UP000000589_10090_MOUSE_v4',
-    #              'UP000274756_318479_DRAME_v4','UP000024404_6282_ONCVO_v4',
-    #              'UP000006304_1133849_9NOCA1_v4', 'UP000030665_36087_TRITR_v4']
+    # organisms = ['mane_overlap_v4', 'UP000000579_71421_HAEIN_v4']
 
-    organisms = ['UP000000579_71421_HAEIN_v4']
-    for org in organisms:
-        # datasets(org)
-        covered_residues_per_prot(org)
+    # for org in organisms:
+
+    for folder in os.listdir(args.in_files):
+        datasets(folder)
+        # covered_residues_per_prot(folder)
 

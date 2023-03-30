@@ -22,7 +22,7 @@ def parse_predicted2_to_dict(dir, organism, uniprot_file):
 
     with gzip.open(dir + organism + '.csv.gz') as f:
         for line in f:
-            uniprot_id = str(line).split(',')[0][2:]
+            uniprot_id = str(line).split(',')[0][2:-1]
             if uniprot_file == uniprot_id:
                 # print(str(line).split(',')[1])
                 if str(line).split(',')[1] == 'no regions':
@@ -30,6 +30,8 @@ def parse_predicted2_to_dict(dir, organism, uniprot_file):
 
                 # units
                 units = json.loads(str(line).split('"')[1])
+                for unit in units:
+                    unit.extend([str(line).split(',')[-6], str(line).split(',')[-5]]) # add class, topology
                 if uniprot_id in dict_predicted:
                     dict_predicted[uniprot_id].extend(units)
                 if uniprot_id not in dict_predicted:
@@ -83,7 +85,7 @@ def dict_to_binary(d_pred2, d_reg, filename, uniprot_file):
     df_residues['UNIT'] = '0'
     df_residues['uniprot_id'] = uniprot_id
 
-    # logging.debug(f'Df: {df_residues} ')
+    logging.debug(f'Df: {df_residues} ')
 
     if uniprot_id in d_pred2:
         for interval2 in d_pred2[uniprot_id]:
@@ -214,7 +216,7 @@ if __name__ == '__main__':
 
     organism = organism[-1]
     uniprot = filename.split('AF-')[1]
-    uniprot = uniprot.split('-F1')[0] + 'A'
+    uniprot = uniprot.split('-F1')[0]
 
     logging.info(f'Working with {uniprot} [{organism}]')
     logging.debug('Processing dict ...')
