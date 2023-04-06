@@ -2,15 +2,17 @@ import os
 import pandas as pd
 import numpy as np
 import argparse
+import gzip
 
 
 def count(x):
     file_names = list(x['files'])
     return file_names
 
+
 def datasets(org):
     mapping = pd.read_csv(args.data)
-    list_files = mapping.groupby('organism').apply(lambda x: count(x)).reset_index() # dare in input un organismo
+    list_files = mapping.groupby('organism').apply(lambda x: count(x)).reset_index()  # dare in input un organismo
     # each organism
     # list_files = list_files.loc[list_files['organism'] == args.organism]
     list_files = list_files.loc[list_files['organism'] == org]
@@ -52,17 +54,18 @@ def datasets(org):
 
         if len(prt_length) != 0: avg_prt_len = np.mean(prt_length)
 
-
         if len(prt_length) != 0: avg_unit_len = np.mean(unit_length)
         if len(prt_length) != 0: avg_region_len = np.mean(region_length)
 
-        df_organism = pd.DataFrame({'organism': [organism],  'total prt': [count_proteins], 'total trp': [count_trp_proteins],
-                                    'not_trp': [count_proteins - count_trp_proteins],
-                                    'trp_residues': [total_trp_res], 'total_residues': [total_res],
-                                     'avg_prt_len': [round(avg_prt_len,2)],
-                                    'avg_unit_lenght': [round(avg_unit_len,2)], 'avg_region_len':[round(avg_region_len,2)]})
+        df_organism = pd.DataFrame(
+            {'organism': [organism], 'total prt': [count_proteins], 'total trp': [count_trp_proteins],
+             'not_trp': [count_proteins - count_trp_proteins],
+             'trp_residues': [total_trp_res], 'total_residues': [total_res],
+             'avg_prt_len': [round(avg_prt_len, 2)],
+             'avg_unit_lenght': [round(avg_unit_len, 2)], 'avg_region_len': [round(avg_region_len, 2)]})
 
         df_organism.to_csv(args.out + '/summary_' + organism + '.csv', index=False)
+
 
 def covered_residues_per_prot(org):
     mapping = pd.read_csv(args.data)
@@ -89,6 +92,48 @@ def covered_residues_per_prot(org):
                     print(df)
 
 
+def trp_by_topology(folder, organism_classes_trp, organism_classes_res):
+
+    organism = folder.split('_')[2]
+    print(folder)
+
+    organism_classes_trp[organism] = {}
+    organism_classes_res[organism] = {}
+    for file in os.listdir(args.in_files + folder):
+
+
+        if file.endswith('.gz'):
+            topologies = []
+            with gzip.open(args.in_files + folder + '/' + file, 'rb') as f:
+                next(f)
+                for line in f:
+                    l = str(line).split(',')
+                    if len(l) > 6:
+                        topology = l[6] + ', ' + l[7].replace("\\n'", '')
+                        if len(topology) > 5:
+                            topologies.append(topology)
+
+                if 0 < len(set(topologies)) < 2: # not considering those with multiple topologies
+                    res = len(topologies)
+                    if topologies[0] not in organism_classes_res[organism]:
+                        organism_classes_res[organism][topologies[0]] = 0
+                        organism_classes_res[organism][topologies[0]] += res
+
+                    else:
+                        organism_classes_res[organism][topologies[0]] += res
+
+                    if topologies[0] not in organism_classes_trp[organism]:
+                        organism_classes_trp[organism][topologies[0]] = 0
+                        organism_classes_trp[organism][topologies[0]] += 1
+                    else:
+                        organism_classes_trp[organism][topologies[0]] += 1
+    df_trp = pd.DataFrame(organism_classes_trp[organism].items(), columns=['topology', 'trp'])
+    df_res = pd.DataFrame(organism_classes_res[organism].items(), columns=['topology', 'trp_res'])
+
+    df_trp.to_csv(args.out + '/topology/trp_by_topology_' + organism + '.csv',  index=False)
+    df_res.to_csv(args.out + '/topology/res_by_topology_' + organism + '.csv', index=False)
+
+
 if __name__ == '__main__':
     # Define argument parser
     parser = argparse.ArgumentParser(description='Generate statistics')
@@ -104,16 +149,19 @@ if __name__ == '__main__':
     # -d data/mapping.csv
     # -o data/af_4/stats
 
-
     # Parse arguments
     args = parser.parse_args()
     total_trp_res = 0
     total_res = 0
-    # organisms = ['mane_overlap_v4', 'UP000000579_71421_HAEIN_v4']
 
+    # organisms = ['mane_overlap_v4', 'UP000000579_71421_HAEIN_v4']
     # for org in organisms:
 
+    organism_classes_res = {}
+    organism_classes_trp = {}
     for folder in os.listdir(args.in_files):
-        datasets(folder)
+        # datasets(folder)
         # covered_residues_per_prot(folder)
 
+
+        trp_by_topology(folder, organism_classes_trp, organism_classes_res) # fill dicts organism_classes_res

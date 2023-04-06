@@ -4,6 +4,7 @@ import plotly.express as px
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
+import glob
 
 def plot_table_dataset():
     df_all = pd.DataFrame()
@@ -49,8 +50,8 @@ def piecharts():
 
     fig, ax = plt.subplots()
 
-    group_names = ['TRP organisms', 'not TRP organisms']
-    subgroup_names = ['TRP curated', 'not TRP curated']
+    group_names = ['TRP organisms ' + str(perc) + '%', 'not TRP organisms']
+    subgroup_names = ['TRP curated '+ str(perc_cur) + '%', 'not TRP curated']
     size = 0.3
     vals = np.array([[perc, perc], [diff_perc, diff_perc]]) # percentuali
     vals2 = np.array([[perc_cur, perc_cur], [diff_perc, diff_perc]])
@@ -77,23 +78,77 @@ def boxplots():
     fig = px.box(df_uni, y="avg_unit_lenght")
     fig.write_image(args.out + "/avg_unit_lenght.png")
 
+def topology_to_number():
+    ontology = pd.read_csv(args.ontology + '/ontology.csv', sep=',')
+    df_trp = pd.DataFrame()
+    df_res = pd.DataFrame()
+    for file in os.listdir(args.in_files + '/topology/'):
+        if 'v4' in file:
+            continue
+        organism = file.split('_')[3].split('.')[0]
+        matching_files = glob.glob(args.in_files +f"/*{organism}*")
+        total_trp = pd.read_csv(matching_files[0])['total prt'][0]
+        total_res = pd.read_csv(matching_files[0])['total_residues'][0]
+        df = pd.read_csv(args.in_files + '/topology/' + file)
+        for idx, row in df.iterrows():
+            tp = row['topology'].split(',')[1].lstrip()
+            if tp == 'Beta hairpin repeat': tp = 'Beta hairpins'
+
+            tp_name = ontology.loc[ontology['Name'].str.contains(tp)]['Code'].iloc[0]
+            df['organism'] = organism
+            if 'res' in file:
+                df.loc[idx, 'trp_res'] = round(row['trp_res'] / total_res, 2)
+            else:
+                df.loc[idx, 'trp'] = round(row['trp'] / total_trp,2)
+
+            df.loc[idx, 'topology'] = tp_name
+
+        if 'res' in file:
+            df_res = pd.concat([df_res, df])
+        else:
+            df_trp = pd.concat([df_trp, df])
+
+    df_trp[['c', 't']] = df_trp['topology'].str.split('.', expand=True)
+    df_trp["t"] = pd.to_numeric(df_trp["t"])
+    df_trp = df_trp.sort_values(['organism', 'c', 't'])
+    df_trp = df_trp.pivot_table(values='trp', index='organism', columns='topology', aggfunc='first')
+    df_trp.to_csv(args.out + '/all_trp_by_topology.csv')
+    df_trp.plot.bar(stacked=True, figsize=(8,10))
+    plt.legend(bbox_to_anchor=(0, 1.01, 1, 0.2), loc="lower left", mode='expand', ncol=6)
+    plt.savefig(args.out + "/all_trp_by_topology.png")
+
+    df_res[['c', 't']] = df_res['topology'].str.split('.', expand=True)
+    df_res["t"] = pd.to_numeric(df_res["t"])
+    df_res = df_res.sort_values(['organism', 'c', 't'])
+    df_res = df_res.pivot_table(values='trp_res', index='organism', columns='topology', aggfunc='first')
+    df_res.to_csv(args.out + '/all_res_by_topology.csv')
+    df_res.plot.bar(stacked=True, figsize=(8,10))
+    plt.legend(bbox_to_anchor=(0, 1.02, 1, 0.2), loc="lower left", mode='expand', ncol=6)
+    plt.savefig(args.out + "/all_res_by_topology.png")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate plots')
+    parser.add_argument('--ontology', '-ont', type=str, help='Path to ontology file')
     parser.add_argument('--in_files', '-i', type=str, help='Path to input files')
     parser.add_argument('--out', '-o', type=str, help='Path to output')
 
+
+    # args.ontology
+    # -ont data/af_4/
+
     # args.in_files
-    # data/af_4/stats
+    # -i data/af_4/stats
 
     # args.out
-    # data/af_4/plots
+    # -o data/af_4/plots
 
 
     # Parse arguments
     args = parser.parse_args()
 
-    plot_table_dataset()
-    # covered_residues()
+    # plot_table_dataset()
     # piecharts()
+    # covered_residues()
     # boxplots()
+    # topology table parsing and plotting histogram
+    topology_to_number()
