@@ -72,7 +72,7 @@ def dict_to_binary(d_pred2, d_reg, filename, uniprot_file):
     ppb = CaPPBuilder()
     seq = ''
     for pp in ppb.build_peptides(structure):
-        seq = pp.get_sequence()
+        seq = pp.get_sequence() # TODO: CONTROLLARE PERCHÈ CORTA
 
     logging.debug(f'sequence: {seq} ')
     df_residues = pd.DataFrame({'uniprot_sequence': [*seq]})
@@ -186,6 +186,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate files with AF info')
     parser.add_argument('--in_prediction', '-i', type=str, help='Path to input predictions')
     parser.add_argument('--in_dataset', '-db', type=str, help='Path to input AF dataset')
+    # parser.add_argument('--dataset_folder', '-df', type=str, help='Path to input AF dataset folder')
     parser.add_argument('--out', '-o', type=str, help='Path to output')
     parser.add_argument("-ll", "--log-level", type=str, choices=["debug", "info"], default="info",
                         help="set log level for logging")
@@ -208,6 +209,10 @@ if __name__ == '__main__':
                         level=logging.getLevelName(args.log_level.upper()), stream=sys.stdout)
     logging.info(f'{os.path.basename(__file__)} started')
     logging.debug(f'Arguments: {vars(args)}')
+
+    # for f in os.listdir(args.dataset_folder):
+    #     print(f)
+    #     args.in_dataset = args.dataset_folder + f
 
     filename = os.path.basename(args.in_dataset).split('.')[0]
 

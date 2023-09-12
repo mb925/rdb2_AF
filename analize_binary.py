@@ -18,7 +18,9 @@ def datasets(org):
     list_files = list_files.loc[list_files['organism'] == org]
     total_trp_res = 0
     total_res = 0
+    print(list_files)
     for el in list_files.iterrows():
+        print(el)
         count_proteins = 0
         count_trp_proteins = 0
         prt_length = []
@@ -28,10 +30,13 @@ def datasets(org):
         files = el[1][0]
         avg_unit_len = 0
         avg_region_len = 0
+        avg_units_num = 0
+        units_num = []
 
         # per organism
         organism = el[1]['organism']
         for file in files:
+            print(file)
             possible_paths = mapping.loc[mapping['files'] == file]
             for path in possible_paths.iterrows():
 
@@ -41,20 +46,23 @@ def datasets(org):
                 if os.path.isfile(try_path):
                     af_prt = pd.read_csv(try_path)
                     print(af_prt)
-                    count_proteins += 1
-                    trp = af_prt['trp'].iloc[0]
+                    count_proteins += 1 # total
 
-                    if trp == 1:
-                        count_trp_proteins += 1
-                        total_trp_res += af_prt['trp_residues'].iloc[0]
+                    if af_prt['units'].iloc[0] >= 5 or af_prt['units'].iloc[0] < 1: # filtro e tengo quelle con più di 5 unità, le altre diventano negativi
+                            count_trp_proteins += 1
+                            total_trp_res += af_prt['trp_residues'].iloc[0]
+                            total_res += af_prt['protein_len'].iloc[0]
+                            prt_length.append(af_prt['protein_len'].iloc[0])
+                            unit_length.append(af_prt['unit_avg_len'].iloc[0])
+                            region_length.append(af_prt['region_avg_len'].iloc[0])
+                            units_num.append(af_prt['units'].iloc[0])
+                    else:
                         total_res += af_prt['protein_len'].iloc[0]
-                        prt_length.append(af_prt['protein_len'].iloc[0])
-                        unit_length.append(af_prt['unit_avg_len'].iloc[0])
-                        region_length.append(af_prt['region_avg_len'].iloc[0])
 
         if len(prt_length) != 0: avg_prt_len = np.mean(prt_length)
 
         if len(prt_length) != 0: avg_unit_len = np.mean(unit_length)
+        if len(prt_length) != 0: avg_units_num = np.mean(units_num)
         if len(prt_length) != 0: avg_region_len = np.mean(region_length)
 
         df_organism = pd.DataFrame(
@@ -62,9 +70,11 @@ def datasets(org):
              'not_trp': [count_proteins - count_trp_proteins],
              'trp_residues': [total_trp_res], 'total_residues': [total_res],
              'avg_prt_len': [round(avg_prt_len, 2)],
-             'avg_unit_lenght': [round(avg_unit_len, 2)], 'avg_region_len': [round(avg_region_len, 2)]})
+             'avg_unit_lenght': [round(avg_unit_len, 2)], 'avg_region_len': [round(avg_region_len, 2)],
+             'avg_units_num': [round(avg_units_num, 2)]
+             })
 
-        df_organism.to_csv(args.out + '/summary_' + organism + '.csv', index=False)
+        df_organism.to_csv(args.out + '/filtered_neg/summary_' + organism + '.csv', index=False)
 
 
 def covered_residues_per_prot(org):
@@ -75,6 +85,7 @@ def covered_residues_per_prot(org):
     list_files = list_files.loc[list_files['organism'] == org]
     total_trp_res = 0
     total_res = 0
+    dict_res = {}
     for el in list_files.iterrows():
         files = el[1][0]
 
@@ -89,7 +100,16 @@ def covered_residues_per_prot(org):
 
                 if os.path.isfile(try_path):
                     df = pd.read_csv(try_path)
-                    print(df)
+                    df = df.loc[df['RDB2'] == 1]
+                    for row in df.iterrows():
+                        if row[1]['uniprot_sequence'] not in dict_res:
+                            dict_res[row[1]['uniprot_sequence']] = 0
+                        else:
+                            dict_res[row[1]['uniprot_sequence']] += 1
+    final = pd.DataFrame(dict_res.items())
+    final.to_csv(args.out + '/amino_comp/residues.csv', index=False)
+    print(dict_res)
+
 
 
 def trp_by_topology(folder, organism_classes_trp, organism_classes_res):
@@ -108,12 +128,13 @@ def trp_by_topology(folder, organism_classes_trp, organism_classes_res):
                 next(f)
                 for line in f:
                     l = str(line).split(',')
+                    print(l)
                     if len(l) > 6:
                         topology = l[6] + ', ' + l[7].replace("\\n'", '')
                         if len(topology) > 5:
                             topologies.append(topology)
 
-                if 0 < len(set(topologies)) < 2: # not considering those with multiple topologies
+                if 0 < len(set(topologies)) < 2:
                     res = len(topologies)
                     if topologies[0] not in organism_classes_res[organism]:
                         organism_classes_res[organism][topologies[0]] = 0
@@ -130,8 +151,8 @@ def trp_by_topology(folder, organism_classes_trp, organism_classes_res):
     df_trp = pd.DataFrame(organism_classes_trp[organism].items(), columns=['topology', 'trp'])
     df_res = pd.DataFrame(organism_classes_res[organism].items(), columns=['topology', 'trp_res'])
 
-    df_trp.to_csv(args.out + '/topology/trp_by_topology_' + organism + '.csv',  index=False)
-    df_res.to_csv(args.out + '/topology/res_by_topology_' + organism + '.csv', index=False)
+    df_trp.to_csv(args.out + '/topology_neg/trp_by_topology_' + organism + '.csv',  index=False)
+    df_res.to_csv(args.out + '/topology_neg/res_by_topology_' + organism + '.csv', index=False)
 
 
 if __name__ == '__main__':
@@ -154,14 +175,13 @@ if __name__ == '__main__':
     total_trp_res = 0
     total_res = 0
 
-    # organisms = ['mane_overlap_v4', 'UP000000579_71421_HAEIN_v4']
-    # for org in organisms:
+
 
     organism_classes_res = {}
     organism_classes_trp = {}
     for folder in os.listdir(args.in_files):
         # datasets(folder)
-        # covered_residues_per_prot(folder)
+        # covered_residues_per_prot('UP000005640_9606_HUMAN_v4')
 
 
         trp_by_topology(folder, organism_classes_trp, organism_classes_res) # fill dicts organism_classes_res
