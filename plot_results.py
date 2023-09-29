@@ -51,7 +51,7 @@ def piecharts_proteins():
 
     fig, ax = plt.subplots()
 
-    group_names = ['TRP organisms ' + str(perc) + '%', 'not TRP organisms ' + str(100 - perc) + '%']
+    group_names = ['TRP proteins ' + str(perc) + '%', 'not TRP proteins ' + str(100 - perc) + '%']
     size = 0.3
     vals = np.array([[perc, perc], [diff_perc, diff_perc]]) # percentuali
 
@@ -59,10 +59,10 @@ def piecharts_proteins():
     outer_colors = cmap(np.arange(4) * 4)
 
     ax.pie(vals.sum(axis=1), radius=1, colors=outer_colors,labels=group_names,
-           wedgeprops=dict(width=size, edgecolor='w'), labeldistance=0.5)
+           wedgeprops=dict(width=size, edgecolor='w'), labeldistance=0.5, textprops={'fontsize': 15})
 
-    ax.set(aspect="equal", title='Pie plot proteins')
-    plt.savefig(args.out + "/piechart_neg_prt.png")
+    ax.set(aspect="equal")
+    plt.savefig(args.out + "/piechart_neg_prt.png" )
 
 def piecharts_residues():
     df = pd.read_csv(args.out + '/filtered_neg_datasets.csv')
@@ -80,7 +80,7 @@ def piecharts_residues():
 
     fig, ax = plt.subplots()
 
-    group_names = ['TRP organisms ' + str(perc) + '%', 'not TRP organisms ' + str(100 - perc) + '%']
+    group_names = ['TRP residues ' + str(perc) + '%', 'not TRP residues ' + str(100 - perc) + '%']
     size = 0.3
     vals = np.array([[perc, perc], [diff_perc, diff_perc]])  # percentuali
 
@@ -88,10 +88,11 @@ def piecharts_residues():
     outer_colors = cmap(np.arange(4) * 4)
 
     ax.pie(vals.sum(axis=1), radius=1, colors=outer_colors, labels=group_names,
-           wedgeprops=dict(width=size, edgecolor='w'), labeldistance=0.5)
+           wedgeprops=dict(width=size, edgecolor='w'), labeldistance=0.5, textprops={'fontsize': 15})
 
 
-    ax.set(aspect="equal", title='Pie plot residues`')
+    ax.set(aspect="equal")
+
     plt.savefig(args.out + "/filtered_neg_piechart_residues.png")
 
 
@@ -136,21 +137,21 @@ def topology_to_number():
         else:
             df_trp = pd.concat([df_trp, df])
 
-    df_trp[['c', 't']] = df_trp['topology'].str.split('.', expand=True)
-    df_trp["t"] = pd.to_numeric(df_trp["t"])
-    df_trp = df_trp.sort_values(['organism', 'c', 't'])
-    df_trp = df_trp.pivot_table(values='trp', index='organism', columns='topology', aggfunc='first')
-    df_trp.to_csv(args.out + '/all_trp_by_topology_neg.csv')
-    df_trp.plot.bar(stacked=True, figsize=(8,10))
-    plt.legend(bbox_to_anchor=(0, 1.01, 1, 0.2), loc="lower left", mode='expand', ncol=6)
-    plt.savefig(args.out + "/all_trp_by_topology_neg.png")
+    # df_trp[['c', 't']] = df_trp['topology'].str.split('.', expand=True)
+    # df_trp["t"] = pd.to_numeric(df_trp["t"])
+    # df_trp = df_trp.sort_values(['organism', 'c', 't'])
+    # df_trp = df_trp.pivot_table(values='trp', index='organism', columns='topology', aggfunc='first')
+    # df_trp.to_csv(args.out + '/all_trp_by_topology_neg.csv')
+    # df_trp.plot.bar(stacked=True, figsize=(8,10))
+    # plt.legend(bbox_to_anchor=(0, 1.01, 1, 0.2), loc="lower left", mode='expand', ncol=6)
+    # plt.savefig(args.out + "/all_trp_by_topology_neg.png")
 
     df_res[['c', 't']] = df_res['topology'].str.split('.', expand=True)
     df_res["t"] = pd.to_numeric(df_res["t"])
     df_res = df_res.sort_values(['organism', 'c', 't'])
     df_res = df_res.pivot_table(values='trp_res', index='organism', columns='topology', aggfunc='first')
     df_res.to_csv(args.out + '/all_res_by_topology_neg.csv')
-    df_res.plot.bar(stacked=True, figsize=(8,10))
+    df_res.plot.bar(stacked=True, figsize=(8,8), width = 0.9)
     plt.legend(bbox_to_anchor=(0, 1.02, 1, 0.2), loc="lower left", mode='expand', ncol=6)
     plt.savefig(args.out + "/all_res_by_topology_neg.png")
 
@@ -166,8 +167,14 @@ def pie_classes():
     classes_rdb = pd.DataFrame()
     classes_rdb['class'] = ['2','3','4','5']
     classes_rdb['total'] = ['21','864','1160','120']
-    fig = px.pie(classes_rdb, values='total', names='class', title='PBD (RepeatsDB)', width=400, height=400)
+    fig = px.pie(classes_rdb, values='total', names='class', title='PBD (RepeatsDB)', width=500, height=500)
+    fig.update_layout(
+        font=dict(
+            size=20 # Set the font size here
+        )
+    )
 
+    fig.write_image(args.out + "/pdb_pie.png")
     ontology = pd.read_csv(args.ontology + '/ontology.csv', sep=',')
     df_trp = pd.DataFrame()
     for file in os.listdir(args.in_files + '/topology_neg/'):
@@ -195,8 +202,13 @@ def pie_classes():
     classes_af = pd.DataFrame()
     classes_af['class'] = ['2','3','4','5']
     classes_af['total'] = ['0','510086','104092','806']
-    fig_af = px.pie(classes_af, values='total', names='class', title='AlphaFold', width=400, height=400)
-    fig_af.show()
+    fig_af = px.pie(classes_af, values='total', names='class', title='AlphaFold', width=500, height=500)
+    fig_af.update_layout(
+        font=dict(
+            size=20  # Set the font size here
+        )
+    )
+    fig_af.write_image(args.out + "/af_pie.png")
 
 
 
@@ -226,6 +238,6 @@ if __name__ == '__main__':
     # covered_residues()
     # boxplots()
     # topology table parsing and plotting histogram
-    # topology_to_number()
+    topology_to_number()
     # amino_frequency()
-    pie_classes()
+    # pie_classes()
